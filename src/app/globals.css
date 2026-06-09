@@ -1,0 +1,263 @@
+@import "tailwindcss";
+
+:root {
+    --color-cream: #FBFBF8;
+    --color-forest: #1A3C34;
+    --color-bark: #8B5E3C;
+    --color-mist: #7E8F8B;
+    --color-overlay: rgba(26, 60, 52, 0.25);
+    
+    --transition-slow: all 1.2s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* RESET & BASIS */
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+/* ==========================================
+   THEME MAWARIF - PUBLIC LANDING PAGE
+   ========================================== */
+.theme-mawarif {
+    font-family: var(--font-body), sans-serif;
+    background-color: var(--color-cream);
+    color: var(--color-forest);
+    line-height: 1.8;
+    min-height: 100vh;
+}
+
+.theme-mawarif h1, 
+.theme-mawarif h2, 
+.theme-mawarif h3, 
+.theme-mawarif h4 {
+    font-family: var(--font-headings), serif;
+    color: var(--color-forest);
+}
+
+/* Navigation Épurée */
+.theme-mawarif nav {
+    position: absolute;
+    top: 0;
+    width: 100%;
+    padding: 40px 50px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 100;
+}
+
+.theme-mawarif .logo {
+    font-family: var(--font-headings), serif;
+    font-size: 1.6rem;
+    color: var(--color-cream);
+    letter-spacing: 4px;
+    text-decoration: none;
+}
+
+/* Hero Header & Carrousel */
+.theme-mawarif .hero-container {
+    position: relative;
+    height: 100vh;
+    width: 100%;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.theme-mawarif .carousel-slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 1.5s ease-in-out;
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.theme-mawarif .carousel-slide::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(to bottom, var(--color-overlay), rgba(26,60,52,0.5));
+    z-index: 1;
+}
+
+.theme-mawarif .carousel-slide.active {
+    opacity: 1;
+}
+
+.theme-mawarif .hero-static-title {
+    position: absolute;
+    z-index: 10;
+    color: var(--color-cream);
+    top: 35%;
+}
+
+.theme-mawarif .hero-static-title h1 {
+    color: var(--color-cream);
+    font-size: 3.5rem;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+}
+
+.theme-mawarif .slide-content {
+    position: relative;
+    z-index: 5;
+    color: var(--color-cream);
+    margin-top: 15vh;
+    max-width: 800px;
+    padding: 0 20px;
+}
+
+.theme-mawarif .slide-content h2 {
+    color: var(--color-cream);
+    font-size: 1.8rem;
+    letter-spacing: 1px;
+    margin-bottom: 15px;
+    font-weight: 400;
+}
+
+.theme-mawarif .slide-content p {
+    font-family: var(--font-headings), serif;
+    font-style: italic;
+    font-size: 1.3rem;
+    font-weight: 400;
+    color: rgba(251, 251, 248, 0.9);
+}
+
+/* Section Manifeste */
+.theme-mawarif .manifesto-section {
+    padding: 140px 20px;
+    text-align: center;
+    max-width: 850px;
+    margin: 0 auto;
+}
+
+.theme-mawarif .manifesto-section h2 {
+    font-size: 2.8rem;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+}
+
+.theme-mawarif .manifesto-subtitle {
+    font-family: var(--font-headings), serif;
+    font-style: italic;
+    font-size: 1.4rem;
+    color: var(--color-bark);
+    margin-bottom: 40px;
+}
+
+.theme-mawarif .manifesto-text {
+    font-size: 1.15rem;
+    font-weight: 300;
+    margin-bottom: 25px;
+    text-align: justify;
+    text-align-last: center;
+}
+
+/* Footer de Transition Épuré */
+.theme-mawarif .transition-footer {
+    padding: 80px 20px 120px 20px;
+    text-align: center;
+}
+
+.theme-mawarif .btn-confidence {
+    font-family: var(--font-body), sans-serif;
+    color: var(--color-forest);
+    text-decoration: none;
+    font-size: 0.95rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--color-forest);
+    padding-bottom: 5px;
+    transition: var(--transition-slow);
+    cursor: pointer;
+}
+
+.theme-mawarif .btn-confidence:hover {
+    color: var(--color-bark);
+    border-color: var(--color-bark);
+}
+
+/* Glassmorphic Login Form overlay */
+.theme-mawarif .login-modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(26, 60, 52, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+}
+
+.theme-mawarif .login-modal-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.theme-mawarif .login-modal-card {
+    width: 100%;
+    max-width: 420px;
+    padding: 40px;
+    text-align: center;
+    background: rgba(251, 251, 248, 0.1);
+    border: 1px solid rgba(251, 251, 248, 0.2);
+    border-radius: 8px;
+    box-shadow: 0 8px 32px 0 rgba(26, 60, 52, 0.37);
+    color: var(--color-cream);
+}
+
+.theme-mawarif .login-modal-card h3 {
+    color: var(--color-cream);
+    margin-bottom: 30px;
+    font-weight: 400;
+    letter-spacing: 1px;
+}
+
+.theme-mawarif .input-line {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--color-mist);
+    color: var(--color-cream);
+    font-family: var(--font-body), sans-serif;
+    font-size: 1.1rem;
+    padding: 10px 0;
+    text-align: center;
+    outline: none;
+    margin-bottom: 20px;
+    transition: border-color 0.5s;
+}
+
+.theme-mawarif .input-line:focus {
+    border-color: var(--color-bark);
+}
+
+.theme-mawarif .error-msg {
+    color: #FF6B6B;
+    font-size: 0.85rem;
+    margin-bottom: 20px;
+}
+
+/* RESPONSIVE LANDING */
+@media (max-width: 768px) {
+    .theme-mawarif nav { padding: 20px; }
+    .theme-mawarif .hero-static-title h1 { font-size: 2.2rem; }
+    .theme-mawarif .slide-content h2 { font-size: 1.3rem; }
+    .theme-mawarif .slide-content p { font-size: 1rem; }
+    .theme-mawarif .manifesto-section h2 { font-size: 2rem; }
+}
