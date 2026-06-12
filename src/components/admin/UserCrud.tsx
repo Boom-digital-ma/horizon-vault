@@ -16,6 +16,7 @@ interface Study {
   id: string;
   title: string;
   slug: string;
+  category?: string;
 }
 
 interface AccessMap {
@@ -53,7 +54,7 @@ export default function UserCrud() {
       // 2. Fetch studies
       const { data: allStudies, error: sError } = await supabase
         .from("studies")
-        .select("id, title, slug")
+        .select("id, title, slug, category")
         .order("title");
 
       if (sError) throw sError;
@@ -345,21 +346,51 @@ export default function UserCrud() {
                     {u.role === "admin" ? (
                       <span className="text-xs text-gray-400 italic">Accès total (Administrateur)</span>
                     ) : (
-                      <div className="flex flex-wrap gap-x-4 gap-y-2">
-                        {studies.map((s) => {
-                          const isGranted = access[u.id]?.[s.id] || false;
-                          return (
-                            <label key={s.id} className="inline-flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={isGranted}
-                                onChange={() => handleToggleAccess(u.id, s.id, isGranted)}
-                                className="rounded text-blue-600 border-gray-300 focus:ring-blue-500 h-3.5 w-3.5"
-                              />
-                              {s.title}
-                            </label>
-                          );
-                        })}
+                      <div className="space-y-3 max-w-xl">
+                        {(() => {
+                          const categoryOrder = [
+                            "Bienvenue au cœur de la Vision MawaRif",
+                            "L'architecture de la performance",
+                            "Trajectoire D'investissement, L'art de l'allocation stratégique",
+                            "Gouvernance"
+                          ];
+                          return Object.entries(
+                            studies.reduce((acc, s) => {
+                              const cat = s.category || "Dossier d'Investissement";
+                              if (!acc[cat]) acc[cat] = [];
+                              acc[cat].push(s);
+                              return acc;
+                            }, {} as Record<string, Study[]>)
+                          )
+                            .sort(([catA], [catB]) => {
+                              const idxA = categoryOrder.indexOf(catA);
+                              const idxB = categoryOrder.indexOf(catB);
+                              return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+                            })
+                            .map(([category, items]) => (
+                              <div key={category} className="space-y-1">
+                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                                  {category}
+                                </div>
+                                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                                  {items.map((s) => {
+                                    const isGranted = access[u.id]?.[s.id] || false;
+                                    return (
+                                      <label key={s.id} className="inline-flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer">
+                                        <input
+                                          type="checkbox"
+                                          checked={isGranted}
+                                          onChange={() => handleToggleAccess(u.id, s.id, isGranted)}
+                                          className="rounded text-blue-600 border-gray-300 focus:ring-blue-500 h-3.5 w-3.5"
+                                        />
+                                        {s.title}
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ));
+                        })()}
                       </div>
                     )}
                   </td>

@@ -12,7 +12,9 @@ interface Study {
   id: string;
   slug: string;
   title: string;
-  content: any;
+  category?: string;
+  intro_text?: string;
+  hasAccess?: boolean;
 }
 
 // Minimalist, premium shimmer skeleton loader
@@ -49,6 +51,9 @@ export default function PortalPage() {
   const [studies, setStudies] = useState<Study[]>([]);
   const [activeStudySlug, setActiveStudySlug] = useState<string>("");
   const [contentLoading, setContentLoading] = useState(false);
+  
+  const [activeStudyContent, setActiveStudyContent] = useState<any>(null);
+  const [activeStudyHasAccess, setActiveStudyHasAccess] = useState<boolean>(false);
 
   const handleSelectStudy = (slug: string) => {
     if (slug === activeStudySlug) return;
@@ -61,28 +66,28 @@ export default function PortalPage() {
 
   const fetchStudies = async (currentUserId: string) => {
     try {
-      const { data: accessList, error } = await supabase
+      // 1. Fetch metadata for all studies (bypass RLS via Security Definer function)
+      const { data: allStudies, error: mError } = await supabase.rpc("get_all_studies_metadata");
+      if (mError) throw mError;
+
+      // 2. Fetch the access list for the current user
+      const { data: accessList, error: aError } = await supabase
         .from("user_study_access")
-        .select(`
-          study_id,
-          studies (
-            id,
-            slug,
-            title,
-            content
-          )
-        `)
+        .select("study_id")
         .eq("user_id", currentUserId);
 
-      if (error) throw error;
+      if (aError) throw aError;
 
-      const fetchedStudies: Study[] = (accessList || [])
-        .map((item: any) => item.studies)
-        .filter((study): study is Study => study !== null);
+      const userAccessIds = new Set((accessList || []).map((item: any) => item.study_id));
+
+      const fetchedStudies: Study[] = (allStudies || []).map((study: any) => ({
+        ...study,
+        hasAccess: userAccessIds.has(study.id)
+      }));
 
       setStudies(fetchedStudies);
       
-      // Update active study slug if it is not in the new list anymore, otherwise leave it (could be "")
+      // Update active study slug if it is not in the list anymore
       setActiveStudySlug((prevSlug) => {
         if (prevSlug === "") return "";
         const stillExists = fetchedStudies.some((s) => s.slug === prevSlug);
@@ -92,6 +97,50 @@ export default function PortalPage() {
       console.error("Error fetching studies:", err);
     }
   };
+
+  // Synchronize study content based on active study slug & studies list
+  useEffect(() => {
+    const fetchStudyContent = async () => {
+      if (!activeStudySlug) {
+        setActiveStudyContent(null);
+        setActiveStudyHasAccess(false);
+        return;
+      }
+
+      const activeStudy = studies.find((s) => s.slug === activeStudySlug);
+      if (!activeStudy) {
+        setActiveStudyContent(null);
+        setActiveStudyHasAccess(false);
+        return;
+      }
+
+      const hasAccess = activeStudy.hasAccess || false;
+      setActiveStudyHasAccess(hasAccess);
+
+      if (hasAccess) {
+        setContentLoading(true);
+        try {
+          const { data, error } = await supabase
+            .from("studies")
+            .select("content")
+            .eq("slug", activeStudySlug)
+            .single();
+
+          if (error) throw error;
+          setActiveStudyContent(data?.content || null);
+        } catch (err) {
+          console.error("Error fetching study content:", err);
+          setActiveStudyContent(null);
+        } finally {
+          setContentLoading(false);
+        }
+      } else {
+        setActiveStudyContent(null);
+      }
+    };
+
+    fetchStudyContent();
+  }, [activeStudySlug, studies]);
 
   useEffect(() => {
     let realtimeChannel: any;
@@ -131,7 +180,7 @@ export default function PortalPage() {
           return;
         }
 
-        // Fetch authorized studies
+        // Fetch authorized studies and metadata
         await fetchStudies(session.user.id);
 
         // Set up real-time listener for access & profile changes on a single unique channel
@@ -222,8 +271,14 @@ export default function PortalPage() {
           <ProjectOverview />
         ) : activeStudy ? (
           <>
-            <StudyContent study={activeStudy} />
-            <AnalyticsTracker userId={userId} studyId={activeStudy.id} />
+            <StudyContent 
+              study={activeStudy} 
+              content={activeStudyContent}
+              hasAccess={activeStudyHasAccess}
+            />
+            {activeStudyHasAccess && (
+              <AnalyticsTracker userId={userId} studyId={activeStudy.id} />
+            )}
           </>
         ) : (
           <div className="flex flex-col items-center justify-center h-[60vh] text-center text-gray-400">

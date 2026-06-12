@@ -4,6 +4,8 @@ interface StudyHeader {
   id: string;
   slug: string;
   title: string;
+  category?: string;
+  hasAccess?: boolean;
 }
 
 interface SidebarProps {
@@ -21,6 +23,23 @@ export default function Sidebar({
   userEmail,
   onLogout,
 }: SidebarProps) {
+  // Group studies by category
+  const categories = studies.reduce((acc, study) => {
+    const cat = study.category || "Dossier d'Investissement";
+    if (!acc[cat]) {
+      acc[cat] = [];
+    }
+    acc[cat].push(study);
+    return acc;
+  }, {} as Record<string, StudyHeader[]>);
+
+  const CATEGORY_ORDER = [
+    "Bienvenue au cœur de la Vision MawaRif",
+    "L'architecture de la performance",
+    "Trajectoire D'investissement, L'art de l'allocation stratégique",
+    "Gouvernance"
+  ];
+
   return (
     <aside className="w-64 bg-[#eae9e5] border-r border-gray-200 flex flex-col justify-between h-screen sticky top-0 text-gray-800">
       <div>
@@ -55,27 +74,48 @@ export default function Sidebar({
             </button>
           </div>
 
-          <div className="space-y-1">
-            <p className="px-3 text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
-              Études disponibles
-            </p>
+          <div className="space-y-4">
             {studies.length === 0 ? (
-              <p className="px-3 py-2 text-xs text-gray-500 italic">
-                Aucune étude autorisée.
-              </p>
+              <div className="space-y-1">
+                <p className="px-3 text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  Études disponibles
+                </p>
+                <p className="px-3 py-2 text-xs text-gray-500 italic">
+                  Aucune étude enregistrée.
+                </p>
+              </div>
             ) : (
-              studies.map((study) => (
-                <button
-                  key={study.id}
-                  onClick={() => onSelectStudy(study.slug)}
-                  className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                    study.slug === activeStudySlug
-                      ? "bg-[#1A3C34]/10 text-[#1A3C34] font-semibold"
-                      : "text-gray-600 hover:bg-gray-200/50 hover:text-gray-900"
-                  }`}
-                >
-                  {study.title}
-                </button>
+              Object.entries(categories)
+                .sort(([catA], [catB]) => {
+                  const idxA = CATEGORY_ORDER.indexOf(catA);
+                  const idxB = CATEGORY_ORDER.indexOf(catB);
+                  return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+                })
+                .map(([category, items]) => (
+                <div key={category} className="space-y-1 pt-2">
+                  <p className="px-3 text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                    {category}
+                  </p>
+                  {items.map((study) => (
+                    <button
+                      key={study.id}
+                      onClick={() => onSelectStudy(study.slug)}
+                      className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-colors flex items-center justify-between ${
+                        study.slug === activeStudySlug
+                          ? "bg-[#1A3C34]/10 text-[#1A3C34] font-semibold"
+                          : "text-gray-600 hover:bg-gray-200/50 hover:text-gray-900"
+                      }`}
+                    >
+                      <span className="truncate">{study.title}</span>
+                      {!study.hasAccess && (
+                        <svg className="w-3.5 h-3.5 text-gray-400 flex-shrink-0 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <title>Accès restreint</title>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
               ))
             )}
           </div>
