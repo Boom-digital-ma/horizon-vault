@@ -56,6 +56,7 @@ export default function PortalPage() {
   
   const [activeStudyContent, setActiveStudyContent] = useState<any>(null);
   const [activeStudyHasAccess, setActiveStudyHasAccess] = useState<boolean>(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const handleSelectStudy = (slug: string) => {
     if (slug === activeStudySlug) return;
@@ -257,41 +258,78 @@ export default function PortalPage() {
   const activeStudy = studies.find((s) => s.slug === activeStudySlug);
 
   return (
-    <div className="flex bg-gray-50 min-h-screen text-gray-800">
+    <div className="flex bg-gray-50 min-h-screen md:h-screen md:overflow-hidden text-gray-800 flex-col md:flex-row">
+      {/* Mobile Sticky Header */}
+      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-30 md:hidden flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <img
+            src="/images/logo.png"
+            alt="MawaRif"
+            className="h-8 w-auto object-contain"
+          />
+          <span className="font-serif text-sm tracking-widest text-[#1A3C34] font-bold">
+            MAWARIF
+          </span>
+        </div>
+        <button
+          onClick={() => setIsSidebarOpen(true)}
+          className="p-1 rounded hover:bg-gray-100 text-[#1A3C34] cursor-pointer"
+          title="Ouvrir le menu"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      </header>
+
       <Sidebar
         studies={studies}
         activeStudySlug={activeStudySlug}
-        onSelectStudy={handleSelectStudy}
+        onSelectStudy={(slug) => {
+          handleSelectStudy(slug);
+          setIsSidebarOpen(false);
+        }}
         userEmail={userEmail}
         onLogout={handleLogout}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
       />
 
-      <main className="flex-1 p-10 overflow-y-auto h-screen">
-        {contentLoading ? (
-          <SkeletonLoader />
-        ) : activeStudySlug === "" ? (
-          <ProjectOverview />
-        ) : activeStudy ? (
-          <>
-            <StudyContent 
-              study={activeStudy} 
-              content={activeStudyContent}
-              hasAccess={activeStudyHasAccess}
-              userEmail={userEmail}
-            />
-            {activeStudyHasAccess && (
-              <AnalyticsTracker userId={userId} studyId={activeStudy.id} />
-            )}
-          </>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-[60vh] text-center text-gray-400">
-            <svg className="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <h2 className="text-lg font-medium text-gray-600">Dossier introuvable</h2>
-            <p className="text-sm mt-1 max-w-sm">Le dossier d&apos;étude demandé n&apos;est plus disponible ou vos droits d&apos;accès ont été modifiés.</p>
-          </div>
-        )}
+      <main className="flex-1 p-6 md:p-10 overflow-y-auto h-auto md:h-screen flex flex-col justify-between">
+        <div className="flex-1">
+          {contentLoading ? (
+            <SkeletonLoader />
+          ) : activeStudySlug === "" ? (
+            <ProjectOverview />
+          ) : activeStudy ? (
+            <>
+              <StudyContent 
+                study={activeStudy} 
+                content={activeStudyContent}
+                hasAccess={activeStudyHasAccess}
+                userEmail={userEmail}
+              />
+              {activeStudyHasAccess && (
+                <AnalyticsTracker userId={userId} studyId={activeStudy.id} />
+              )}
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-[60vh] text-center text-gray-400">
+              <svg className="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <h2 className="text-lg font-medium text-gray-600">Dossier introuvable</h2>
+              <p className="text-sm mt-1 max-w-sm">Le dossier d&apos;étude demandé n&apos;est plus disponible ou vos droits d&apos;accès ont été modifiés.</p>
+            </div>
+          )}
+        </div>
+        
+        <footer className="mt-12 pt-6 border-t border-gray-200/50 flex justify-between items-center text-[10px] text-gray-400 font-medium uppercase tracking-wider flex-shrink-0">
+          <span>© {new Date().getFullYear()} MawaRif</span>
+          <span>
+            By <a href="https://boom-digital.ma" target="_blank" rel="noopener noreferrer" className="hover:text-gray-600 transition-colors font-bold">BOOM</a>
+          </span>
+        </footer>
       </main>
     </div>
   );

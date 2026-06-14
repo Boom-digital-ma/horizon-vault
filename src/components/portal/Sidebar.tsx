@@ -15,6 +15,8 @@ interface SidebarProps {
   onSelectStudy: (slug: string) => void;
   userEmail: string;
   onLogout: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 export default function Sidebar({
@@ -23,6 +25,8 @@ export default function Sidebar({
   onSelectStudy,
   userEmail,
   onLogout,
+  isOpen = false,
+  onClose,
 }: SidebarProps) {
   // Group studies by category
   const categories = studies.reduce((acc, study) => {
@@ -42,23 +46,44 @@ export default function Sidebar({
   ];
 
   return (
-    <aside className="w-64 bg-[#eae9e5] border-r border-gray-200 flex flex-col justify-between h-screen sticky top-0 text-gray-800">
-      <div>
+    <>
+      {/* Mobile backdrop overlay */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/45 backdrop-blur-xs z-40 md:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      <aside className={`w-64 bg-[#eae9e5] border-r border-gray-200 flex flex-col justify-between h-screen text-gray-800 z-50 transition-transform duration-300
+        fixed inset-y-0 left-0 md:sticky md:top-0 md:inset-y-auto md:left-auto md:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+      `}>
         {/* Header */}
-        <div className="p-6 border-b border-gray-200/70 flex flex-col items-center text-center">
-          <img
-            src="/images/logo.png"
-            alt="MawaRif"
-            className="object-contain mb-3"
-            style={{ color: "#eae9e5" }}
-          />
-          <p className="text-[10px] tracking-widest text-[#1A3C34]/80 uppercase font-semibold">
-            Espace Investisseurs
-          </p>
-        </div>
+        <div className="p-6 border-b border-gray-200/70 flex flex-col items-center text-center relative flex-shrink-0">
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="absolute top-4 right-4 p-1 rounded-md text-gray-500 hover:bg-gray-200/60 md:hidden cursor-pointer"
+                title="Fermer le menu"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+            <img
+              src="/images/logo.png"
+              alt="MawaRif"
+              className="object-contain mb-3"
+              style={{ color: "#eae9e5" }}
+            />
+            <p className="text-[10px] tracking-widest text-[#1A3C34]/80 uppercase font-semibold">
+              Espace Investisseurs
+            </p>
+          </div>
 
         {/* Navigation */}
-        <nav className="p-4 space-y-4">
+        <nav className="p-4 space-y-4 overflow-y-auto flex-1">
           <div>
             <button
               onClick={() => onSelectStudy("")}
@@ -123,10 +148,9 @@ export default function Sidebar({
             )}
           </div>
         </nav>
-      </div>
 
       {/* Footer Profile & Logout */}
-      <div className="p-4 border-t border-gray-200/70 bg-gray-800/5">
+      <div className="p-4 border-t border-gray-200/70 bg-gray-800/5 flex-shrink-0">
         <div className="mb-3">
           <p className="text-[9px] text-gray-400 uppercase font-semibold">Connecté en tant que</p>
           <p className="text-xs font-medium text-gray-700 truncate" title={userEmail}>
@@ -141,5 +165,6 @@ export default function Sidebar({
         </button>
       </div>
     </aside>
+    </>
   );
 }

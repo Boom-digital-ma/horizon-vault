@@ -16,8 +16,10 @@ export default function PDFViewer({ slug, userEmail }: PDFViewerProps) {
   const [numPages, setNumPages] = useState(0);
   const [scale, setScale] = useState(1.2);
   const [scriptLoaded, setScriptLoaded] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const renderTaskRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // 1. Load PDF.js CDN Script
   useEffect(() => {
@@ -99,6 +101,50 @@ export default function PDFViewer({ slug, userEmail }: PDFViewerProps) {
       isMounted = false;
     };
   }, [slug, scriptLoaded]);
+  
+  // 2.5 Auto-scale PDF page to fit width and height on resize / page load
+  useEffect(() => {
+    if (!pdfDoc) return;
+
+    const adjustScale = async () => {
+      try {
+        const page = await pdfDoc.getPage(pageNum);
+        const unscaledViewport = page.getViewport({ scale: 1.0 });
+        const container = containerRef.current;
+        if (!container) return;
+
+        const isMobile = window.innerWidth < 640;
+        const paddingWidth = isMobile ? 32 : 64;
+        
+        // In fullscreen, we only need to account for the PDFViewer's own toolbar and padding.
+        // In normal mode, we also account for the site headers, layout margins, and outer wrappers.
+        const paddingHeight = isFullscreen 
+          ? (isMobile ? 80 : 120) 
+          : (isMobile ? 130 : 200);
+        
+        const availableWidth = container.clientWidth - paddingWidth;
+        const availableHeight = window.innerHeight - paddingHeight;
+
+        const scaleW = availableWidth / unscaledViewport.width;
+        const scaleH = availableHeight / unscaledViewport.height;
+        
+        // Fit both width and height to keep the full page visible on screen
+        const fitScale = Math.min(scaleW, scaleH);
+
+        if (fitScale < 1.2) {
+          setScale(Math.max(0.4, Number(fitScale.toFixed(2))));
+        } else {
+          setScale(1.2);
+        }
+      } catch (err) {
+        console.error("Scale adjustment error:", err);
+      }
+    };
+
+    adjustScale();
+    window.addEventListener("resize", adjustScale);
+    return () => window.removeEventListener("resize", adjustScale);
+  }, [pdfDoc, pageNum, isFullscreen]);
 
   // 3. Render Page to Canvas
   useEffect(() => {
@@ -191,7 +237,11 @@ export default function PDFViewer({ slug, userEmail }: PDFViewerProps) {
   const watermarkText = `${userEmail} • CONFIDENTIEL MAWARIF • ${new Date().toLocaleDateString("fr-FR")}`;
 
   return (
-    <div className="flex flex-col items-center bg-[#F8F9FA] rounded-xl border border-gray-200/80 shadow-sm overflow-hidden select-none">
+    <div className={`flex flex-col items-center bg-[#F8F9FA] select-none ${
+      isFullscreen 
+        ? "fixed inset-0 z-[9999] w-screen h-screen rounded-none border-none" 
+        : "w-full rounded-xl border border-gray-200/80 shadow-sm overflow-hidden"
+    }`}>
       {/* Hide content completely when printing */}
       <style jsx global>{`
         @media print {
@@ -229,7 +279,19 @@ export default function PDFViewer({ slug, userEmail }: PDFViewerProps) {
           </button>
         </div>
 
-        {/* Zoom & Protection Note */}
+        {/* Center Brand Logo (always visible, even in fullscreen) */}
+        <div className="flex items-center gap-2 pointer-events-none select-none">
+          <img
+            src="/images/logo.png"
+            alt="MawaRif Logo"
+            className="h-6 w-auto object-contain"
+          />
+          <span className="font-serif text-[10px] tracking-[0.15em] text-[#1A3C34] font-bold hidden sm:inline">
+            MAWARIF
+          </span>
+        </div>
+
+        {/* Zoom & Protection & Fullscreen */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1">
             <button
@@ -257,6 +319,23 @@ export default function PDFViewer({ slug, userEmail }: PDFViewerProps) {
             </button>
           </div>
 
+          <button
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            disabled={loading}
+            className="p-1.5 rounded-md hover:bg-gray-100 text-gray-600 transition-colors cursor-pointer flex items-center gap-1"
+            title={isFullscreen ? "Quitter le plein écran" : "Plein écran"}
+          >
+            {isFullscreen ? (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8V4m0 0h4M4 4l5 5m11-5V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+              </svg>
+            )}
+          </button>
+
           <div className="hidden sm:flex items-center gap-1.5 bg-amber-50 border border-amber-200/50 px-3 py-1 rounded-full">
             <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
             <span className="text-[10px] text-amber-800 font-semibold uppercase tracking-wider">Aperçu protégé</span>
@@ -265,7 +344,12 @@ export default function PDFViewer({ slug, userEmail }: PDFViewerProps) {
       </div>
 
       {/* Render Area */}
-      <div className="w-full flex justify-center p-8 overflow-auto min-h-[60vh] relative bg-gray-100/40">
+      <div 
+        ref={containerRef}
+        className={`w-full flex justify-center p-4 sm:p-8 overflow-auto relative bg-gray-100/40 ${
+          isFullscreen ? "flex-1" : "min-h-[60vh]"
+        }`}
+      >
         {loading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 z-10">
             <div className="w-8 h-8 border-3 border-[#1A3C34] border-t-transparent rounded-full animate-spin"></div>
@@ -299,12 +383,17 @@ export default function PDFViewer({ slug, userEmail }: PDFViewerProps) {
 
             {/* Repeating Translucent Watermark Overlay */}
             <div 
-              className="absolute inset-0 pointer-events-none overflow-hidden select-none z-10 grid grid-cols-2 grid-rows-3 opacity-[0.06] text-black font-mono font-bold text-xs uppercase tracking-widest"
-              style={{ transform: "rotate(-25deg) scale(1.2)" }}
+              className="absolute inset-0 pointer-events-none overflow-hidden select-none z-10 grid grid-cols-2 grid-rows-3 opacity-[0.05] text-black font-mono font-bold text-[9px] uppercase tracking-widest"
+              style={{ transform: "rotate(-25deg) scale(1.15)" }}
             >
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="flex items-center justify-center p-8 whitespace-nowrap">
-                  {watermarkText}
+                <div key={i} className="flex flex-col items-center justify-center p-6 gap-2 text-center">
+                  <img
+                    src="/images/logo.png"
+                    alt=""
+                    className="h-10 w-auto object-contain grayscale contrast-125"
+                  />
+                  <span className="whitespace-nowrap">{watermarkText}</span>
                 </div>
               ))}
             </div>

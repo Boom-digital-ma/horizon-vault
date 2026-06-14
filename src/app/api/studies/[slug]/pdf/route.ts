@@ -27,8 +27,7 @@ export async function GET(
     }
     const token = authHeader.split(" ")[1];
 
-    const supabaseClient = createClient(supabaseUrl, anonKey);
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
 
     if (authError || !user) {
       return NextResponse.json({ error: "Session invalide ou expirée" }, { status: 401 });

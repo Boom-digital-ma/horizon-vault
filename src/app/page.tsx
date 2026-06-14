@@ -115,7 +115,7 @@ export default function Home() {
       </section>
 
       <div className="transition-footer">
-        <div className="flex flex-col items-center gap-6">
+        <div className="flex flex-col items-center gap-4">
           <a className="btn-confidence" onClick={() => setIsLoginOpen(true)}>
             Entrer dans la confidence
           </a>
@@ -125,6 +125,9 @@ export default function Home() {
           >
             invest@mawarif.com
           </a>
+          <p className="text-[10px] text-[#1A3C34]/40 tracking-wider mt-4">
+            © {new Date().getFullYear()} MawaRif. By <a href="https://boom-digital.ma" target="_blank" rel="noopener noreferrer" className="hover:text-[#1A3C34] hover:underline font-bold transition-colors">BOOM</a>
+          </p>
         </div>
       </div>
 
