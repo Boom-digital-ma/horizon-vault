@@ -14,7 +14,9 @@ interface Study {
   title: string;
   category?: string;
   intro_text?: string;
+  pdf_path?: string;
   hasAccess?: boolean;
+  order_index?: number;
 }
 
 // Minimalist, premium shimmer skeleton loader
@@ -275,6 +277,7 @@ export default function PortalPage() {
               study={activeStudy} 
               content={activeStudyContent}
               hasAccess={activeStudyHasAccess}
+              userEmail={userEmail}
             />
             {activeStudyHasAccess && (
               <AnalyticsTracker userId={userId} studyId={activeStudy.id} />

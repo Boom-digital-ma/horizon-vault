@@ -14,6 +14,7 @@ interface AnalyticsRecord {
   } | null;
   studies: {
     title: string;
+    category?: string;
   } | null;
 }
 
@@ -21,6 +22,7 @@ export default function AnalyticsDashboard() {
   const [records, setRecords] = useState<AnalyticsRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
+  const [expandedUser, setExpandedUser] = useState<string | null>(null);
 
   const fetchAnalytics = async () => {
     setLoading(true);
@@ -37,7 +39,8 @@ export default function AnalyticsDashboard() {
             full_name
           ),
           studies (
-            title
+            title,
+            category
           )
         `)
         .order("updated_at", { ascending: false });
@@ -97,6 +100,56 @@ export default function AnalyticsDashboard() {
     }
   });
 
+  // Group records by user email
+  const userGroups = Object.values(
+    records.reduce((acc, record) => {
+      const email = record.profiles?.email || "Email inconnu";
+      const fullName = record.profiles?.full_name || "Sans nom";
+      
+      if (!acc[email]) {
+        acc[email] = {
+          email,
+          fullName,
+          totalClicks: 0,
+          totalTimeSpent: 0,
+          lastActive: record.updated_at,
+          studies: [],
+        };
+      }
+      
+      acc[email].totalClicks += record.clicks;
+      acc[email].totalTimeSpent += record.time_spent;
+      if (new Date(record.updated_at) > new Date(acc[email].lastActive)) {
+        acc[email].lastActive = record.updated_at;
+      }
+      
+      acc[email].studies.push({
+        id: record.id,
+        title: record.studies?.title || "Étude supprimée",
+        clicks: record.clicks,
+        timeSpent: record.time_spent,
+        updatedAt: record.updated_at,
+        category: record.studies?.category || "Bienvenue au cœur de la Vision MawaRif",
+      });
+      
+      return acc;
+    }, {} as Record<string, {
+      email: string;
+      fullName: string;
+      totalClicks: number;
+      totalTimeSpent: number;
+      lastActive: string;
+      studies: {
+        id: string;
+        title: string;
+        clicks: number;
+        timeSpent: number;
+        updatedAt: string;
+        category: string;
+      }[];
+    }>)
+  ).sort((a, b) => new Date(b.lastActive).getTime() - new Date(a.lastActive).getTime());
+
   if (loading) {
     return (
       <div className="flex justify-center p-8">
@@ -116,7 +169,7 @@ export default function AnalyticsDashboard() {
             <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Investisseurs Actifs</span>
             <div className="text-2xl font-bold text-gray-800">{uniqueInvestors}</div>
           </div>
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
+          <div className="p-3 bg-[#1A3C34]/10 text-[#1A3C34] rounded-lg">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
@@ -167,7 +220,7 @@ export default function AnalyticsDashboard() {
           <h3 className="text-base font-semibold text-gray-800">Activité des Investisseurs & Taux d&apos;Engagement</h3>
           <button
             onClick={fetchAnalytics}
-            className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+            className="text-xs font-semibold text-emerald-600 hover:text-emerald-800 transition-colors cursor-pointer"
           >
             Rafraîchir
           </button>
@@ -178,53 +231,123 @@ export default function AnalyticsDashboard() {
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
                 <th className="p-4 font-semibold text-gray-500 uppercase tracking-wider text-xs">Investisseur</th>
-                <th className="p-4 font-semibold text-gray-500 uppercase tracking-wider text-xs">Étude consultée</th>
-                <th className="p-4 font-semibold text-gray-500 uppercase tracking-wider text-xs text-right">Clics</th>
-                <th className="p-4 font-semibold text-gray-500 uppercase tracking-wider text-xs text-right">Temps actif spent</th>
-                <th className="p-4 font-semibold text-gray-500 uppercase tracking-wider text-xs text-right">Dernier accès</th>
+                <th className="p-4 font-semibold text-gray-500 uppercase tracking-wider text-xs">Dossiers consultés</th>
+                <th className="p-4 font-semibold text-gray-500 uppercase tracking-wider text-xs text-right">Total Clics</th>
+                <th className="p-4 font-semibold text-gray-500 uppercase tracking-wider text-xs text-right">Temps total</th>
+                <th className="p-4 font-semibold text-gray-500 uppercase tracking-wider text-xs text-right">Dernière activité</th>
+                <th className="p-4 font-semibold text-gray-500 uppercase tracking-wider text-xs text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {records.length === 0 ? (
+              {userGroups.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-6 text-center text-gray-400 italic">
+                  <td colSpan={6} className="p-6 text-center text-gray-400 italic">
                     Aucune statistique d&apos;activité enregistrée.
                   </td>
                 </tr>
               ) : (
-                records.map((r) => (
-                  <tr key={r.id} className="hover:bg-gray-50/50">
-                    <td className="p-4">
-                      <div className="font-medium text-gray-800">{r.profiles?.full_name || "Sans nom"}</div>
-                      <div className="text-xs text-gray-400 mt-0.5">{r.profiles?.email || "Email inconnu"}</div>
-                    </td>
-                    <td className="p-4 font-medium text-gray-700">
-                      {r.studies?.title || "Étude supprimée"}
-                    </td>
-                    <td className="p-4 text-right font-mono text-gray-800">
-                      {r.clicks}
-                    </td>
-                    <td className="p-4 text-right font-medium text-gray-800">
-                      {r.time_spent > 0 ? (
-                        <div className="flex justify-end items-center gap-2">
-                          <span className="text-xs">{formatTime(r.time_spent)}</span>
-                          {/* Mini visual indicator bar */}
-                          <div className="w-12 bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                            <div 
-                              className="bg-green-500 h-full" 
-                              style={{ width: `${Math.min((r.time_spent / 600) * 100, 100)}%` }} // 10 minutes = 100%
-                            />
+                userGroups.map((group) => {
+                  const isExpanded = expandedUser === group.email;
+                  return (
+                    <tr key={group.email} className="hover:bg-gray-50/50">
+                      <td colSpan={6} className="p-0">
+                        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+                          <div className="w-1/3">
+                            <div className="font-semibold text-gray-800">{group.fullName}</div>
+                            <div className="text-xs text-gray-400 mt-0.5">{group.email}</div>
+                          </div>
+                          <div className="text-xs text-gray-600 w-1/6">
+                            {group.studies.length} dossier(s)
+                          </div>
+                          <div className="text-right font-mono text-gray-800 font-medium text-xs w-1/12 pr-4">
+                            {group.totalClicks}
+                          </div>
+                          <div className="text-right text-xs text-gray-800 font-medium w-1/6 pr-4">
+                            {formatTime(group.totalTimeSpent)}
+                          </div>
+                          <div className="text-right text-xs text-gray-400 w-1/6 pr-4">
+                            {formatDate(group.lastActive)}
+                          </div>
+                          <div className="text-right w-1/12">
+                            <button
+                              onClick={() => setExpandedUser(isExpanded ? null : group.email)}
+                              className="text-xs font-semibold text-[#1A3C34] hover:bg-[#1A3C34]/5 border border-[#1A3C34]/20 py-1 px-3 rounded transition-colors cursor-pointer uppercase tracking-wider"
+                            >
+                              {isExpanded ? "Fermer" : "Détails"}
+                            </button>
                           </div>
                         </div>
-                      ) : (
-                        "0 s"
-                      )}
-                    </td>
-                    <td className="p-4 text-right text-xs text-gray-400">
-                      {formatDate(r.updated_at)}
-                    </td>
-                  </tr>
-                ))
+
+                        {isExpanded && (
+                          <div className="bg-gray-50/30 p-4 border-b border-gray-100 space-y-4">
+                            {(() => {
+                              const categoryOrder = [
+                                "Bienvenue au cœur de la Vision MawaRif",
+                                "L'architecture de la performance",
+                                "Trajectoire D'investissement, L'art de l'allocation stratégique",
+                                "Gouvernance"
+                              ];
+                              const groupedStudies = group.studies.reduce((sAcc, s) => {
+                                const cat = s.category || "Bienvenue au cœur de la Vision MawaRif";
+                                if (!sAcc[cat]) sAcc[cat] = [];
+                                sAcc[cat].push(s);
+                                return sAcc;
+                              }, {} as Record<string, typeof group.studies>);
+
+                              return Object.entries(groupedStudies)
+                                .sort(([catA], [catB]) => {
+                                  const idxA = categoryOrder.indexOf(catA);
+                                  const idxB = categoryOrder.indexOf(catB);
+                                  return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+                                })
+                                .map(([category, items]) => (
+                                  <div key={category} className="bg-white rounded-lg border border-gray-200/50 shadow-xs overflow-hidden">
+                                    <div className="bg-gray-50/50 px-4 py-2 border-b border-gray-200/60 text-[9px] font-bold text-[#8B5E3C] uppercase tracking-widest">
+                                      {category}
+                                    </div>
+                                    <table className="w-full text-left border-collapse text-xs">
+                                      <thead>
+                                        <tr className="bg-gray-50/20 border-b border-gray-150">
+                                          <th className="p-3 font-semibold text-gray-500 uppercase tracking-wider text-[10px] w-2/5">Étude consultée</th>
+                                          <th className="p-3 font-semibold text-gray-500 uppercase tracking-wider text-[10px] text-right w-1/5">Clics</th>
+                                          <th className="p-3 font-semibold text-gray-500 uppercase tracking-wider text-[10px] text-right w-1/5">Temps actif spent</th>
+                                          <th className="p-3 font-semibold text-gray-500 uppercase tracking-wider text-[10px] text-right w-1/5">Dernier accès</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-gray-100">
+                                        {items.map((s) => (
+                                          <tr key={s.id} className="hover:bg-gray-50/40">
+                                            <td className="p-3 font-medium text-gray-700">{s.title}</td>
+                                            <td className="p-3 text-right font-mono text-gray-800">{s.clicks}</td>
+                                            <td className="p-3 text-right text-gray-800 font-medium">
+                                              {s.timeSpent > 0 ? (
+                                                <div className="flex justify-end items-center gap-2">
+                                                  <span>{formatTime(s.timeSpent)}</span>
+                                                  <div className="w-12 bg-gray-100 h-1 rounded-full overflow-hidden">
+                                                    <div 
+                                                      className="bg-green-500 h-full" 
+                                                      style={{ width: `${Math.min((s.timeSpent / 600) * 100, 100)}%` }}
+                                                    />
+                                                  </div>
+                                                </div>
+                                              ) : (
+                                                "0 s"
+                                              )}
+                                            </td>
+                                            <td className="p-3 text-right text-gray-400">{formatDate(s.updatedAt)}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                ));
+                            })()}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

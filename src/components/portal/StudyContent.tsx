@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import PDFViewer from "./PDFViewer";
 
 interface StudyContentProps {
   study: {
@@ -8,13 +9,15 @@ interface StudyContentProps {
     title: string;
     category?: string;
     intro_text?: string;
+    pdf_path?: string;
   };
   content: any;
   hasAccess: boolean;
+  userEmail?: string;
 }
 
-export default function StudyContent({ study, content, hasAccess }: StudyContentProps) {
-  const { slug, title, category, intro_text } = study;
+export default function StudyContent({ study, content, hasAccess, userEmail = "investor@mawarif.com" }: StudyContentProps) {
+  const { slug, title, category, intro_text, pdf_path } = study;
 
   // React state for sub-navigation tabs within complex studies
   const [capexTab, setCapexTab] = useState<string>("synthesis");
@@ -2014,6 +2017,8 @@ export default function StudyContent({ study, content, hasAccess }: StudyContent
             </a>
           </div>
         </div>
+      ) : pdf_path ? (
+        <PDFViewer slug={slug} userEmail={userEmail} />
       ) : (
         renderDetails()
       )}

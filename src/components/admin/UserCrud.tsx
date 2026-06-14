@@ -17,6 +17,7 @@ interface Study {
   title: string;
   slug: string;
   category?: string;
+  order_index?: number;
 }
 
 interface AccessMap {
@@ -30,6 +31,10 @@ export default function UserCrud() {
   const [studies, setStudies] = useState<Study[]>([]);
   const [access, setAccess] = useState<AccessMap>({});
   const [loading, setLoading] = useState(true);
+
+  // Modal and Collapse states
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
   // Form states
   const [email, setEmail] = useState("");
@@ -54,8 +59,9 @@ export default function UserCrud() {
       // 2. Fetch studies
       const { data: allStudies, error: sError } = await supabase
         .from("studies")
-        .select("id, title, slug, category")
-        .order("title");
+        .select("id, title, slug, category, order_index")
+        .order("order_index", { ascending: true })
+        .order("title", { ascending: true });
 
       if (sError) throw sError;
       setStudies(allStudies || []);
@@ -127,6 +133,7 @@ export default function UserCrud() {
       setEmail("");
       setPassword("");
       setFullName("");
+      setIsCreateModalOpen(false);
       await fetchData(); // Refresh list
     } catch (err: any) {
       setErrorMsg(err.message || "Une erreur est survenue.");
@@ -170,6 +177,7 @@ export default function UserCrud() {
       }
 
       setSuccessMsg("Utilisateur supprimé avec succès.");
+      setExpandedUserId(null);
       await fetchData();
     } catch (err: any) {
       setErrorMsg(err.message || "Une erreur est survenue.");
@@ -231,6 +239,10 @@ export default function UserCrud() {
     }
   };
 
+  const toggleExpand = (userId: string) => {
+    setExpandedUserId((prev) => (prev === userId ? null : userId));
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center p-8">
@@ -240,177 +252,266 @@ export default function UserCrud() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Messages */}
-      {errorMsg && <div className="p-4 bg-red-50 text-red-700 text-sm rounded-md border border-red-100">{errorMsg}</div>}
-      {successMsg && <div className="p-4 bg-green-50 text-green-700 text-sm rounded-md border border-green-100">{successMsg}</div>}
+      {errorMsg && <div className="p-4 bg-red-50 text-red-700 text-sm rounded-md border border-red-100 animate-fadeIn">{errorMsg}</div>}
+      {successMsg && <div className="p-4 bg-green-50 text-green-700 text-sm rounded-md border border-green-100 animate-fadeIn">{successMsg}</div>}
 
-      {/* Form creation */}
-      <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm space-y-4">
-        <h3 className="text-base font-semibold text-gray-800">Ajouter un nouvel investisseur</h3>
-        <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Nom complet</label>
-            <input
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Ex: Jean Dupont"
-              className="w-full text-sm px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Adresse email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Ex: investor@mail.com"
-              className="w-full text-sm px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Mot de passe</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full text-sm px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-              required
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={actionLoading}
-            className="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-md transition-colors disabled:opacity-50"
-          >
-            {actionLoading ? "Création..." : "Créer le compte"}
-          </button>
-        </form>
+      {/* Action Header */}
+      <div className="flex justify-between items-center bg-white p-6 rounded-lg border border-gray-200/60 shadow-sm">
+        <div>
+          <h2 className="text-base font-bold text-gray-800 uppercase tracking-wider">Investisseurs & Rôles</h2>
+          <p className="text-xs text-gray-400 mt-1">Créez des comptes investisseurs et configurez précisément leurs accès.</p>
+        </div>
+        <button
+          onClick={() => {
+            setErrorMsg("");
+            setSuccessMsg("");
+            setIsCreateModalOpen(true);
+          }}
+          className="py-2.5 px-5 bg-[#1A3C34] hover:bg-[#1A3C34]/95 text-white font-semibold text-xs uppercase tracking-wider rounded-md transition-all shadow-sm flex items-center gap-2 cursor-pointer"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
+          </svg>
+          Ajouter un investisseur
+        </button>
       </div>
 
       {/* Users table */}
-      <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-gray-100">
-          <h3 className="text-base font-semibold text-gray-800">Gestion des Utilisateurs & Autorisations</h3>
-        </div>
+      <div className="bg-white rounded-lg border border-gray-200/60 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-sm">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="p-4 font-semibold text-gray-500 uppercase tracking-wider text-xs">Utilisateur</th>
-                <th className="p-4 font-semibold text-gray-500 uppercase tracking-wider text-xs">Rôle</th>
-                <th className="p-4 font-semibold text-gray-500 uppercase tracking-wider text-xs">Statut</th>
-                <th className="p-4 font-semibold text-gray-500 uppercase tracking-wider text-xs">Accès aux Études</th>
-                <th className="p-4 font-semibold text-gray-500 uppercase tracking-wider text-xs text-right">Actions</th>
+              <tr className="bg-gray-50 border-b border-gray-200/60 text-gray-500 text-[10px] font-bold uppercase tracking-wider">
+                <th className="p-4">Investisseur</th>
+                <th className="p-4 w-28">Rôle</th>
+                <th className="p-4 w-28">Statut</th>
+                <th className="p-4 w-32 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {users.map((u) => (
-                <tr key={u.id} className="hover:bg-gray-50/50">
-                  <td className="p-4">
-                    <div className="font-medium text-gray-800">{u.full_name || "Sans nom"}</div>
-                    <div className="text-xs text-gray-400 mt-0.5">{u.email}</div>
-                  </td>
-                  <td className="p-4">
-                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
-                      u.role === "admin" 
-                        ? "bg-purple-50 text-purple-700 border border-purple-100" 
-                        : "bg-blue-50 text-blue-700 border border-blue-100"
-                    }`}>
-                      {u.role}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    {u.role === "admin" ? (
-                      <span className="text-xs text-gray-400 italic">Toujours actif</span>
-                    ) : (
-                      <button
-                        onClick={() => handleToggleActive(u.id, u.is_active !== false)}
-                        className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                          u.is_active !== false ? "bg-green-600" : "bg-gray-200"
-                        }`}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                            u.is_active !== false ? "translate-x-4" : "translate-x-0"
-                          }`}
-                        />
-                      </button>
-                    )}
-                  </td>
-                  <td className="p-4">
-                    {u.role === "admin" ? (
-                      <span className="text-xs text-gray-400 italic">Accès total (Administrateur)</span>
-                    ) : (
-                      <div className="space-y-3 max-w-xl">
-                        {(() => {
-                          const categoryOrder = [
-                            "Bienvenue au cœur de la Vision MawaRif",
-                            "L'architecture de la performance",
-                            "Trajectoire D'investissement, L'art de l'allocation stratégique",
-                            "Gouvernance"
-                          ];
-                          return Object.entries(
-                            studies.reduce((acc, s) => {
-                              const cat = s.category || "Dossier d'Investissement";
-                              if (!acc[cat]) acc[cat] = [];
-                              acc[cat].push(s);
-                              return acc;
-                            }, {} as Record<string, Study[]>)
-                          )
-                            .sort(([catA], [catB]) => {
-                              const idxA = categoryOrder.indexOf(catA);
-                              const idxB = categoryOrder.indexOf(catB);
-                              return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
-                            })
-                            .map(([category, items]) => (
-                              <div key={category} className="space-y-1">
-                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                                  {category}
-                                </div>
-                                <div className="flex flex-wrap gap-x-4 gap-y-1">
-                                  {items.map((s) => {
-                                    const isGranted = access[u.id]?.[s.id] || false;
-                                    return (
-                                      <label key={s.id} className="inline-flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer">
-                                        <input
-                                          type="checkbox"
-                                          checked={isGranted}
-                                          onChange={() => handleToggleAccess(u.id, s.id, isGranted)}
-                                          className="rounded text-blue-600 border-gray-300 focus:ring-blue-500 h-3.5 w-3.5"
-                                        />
-                                        {s.title}
-                                      </label>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            ));
-                        })()}
+              {users.map((u) => {
+                const isExpanded = expandedUserId === u.id;
+                return (
+                  <tr key={u.id} className="hover:bg-gray-50/30 transition-colors">
+                    <td colSpan={4} className="p-0">
+                      {/* Main Collapsed Row */}
+                      <div className="flex items-center justify-between p-4 min-h-[72px]">
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-800 text-sm">{u.full_name || "Sans nom"}</div>
+                          <div className="text-xs text-gray-400 font-mono mt-0.5">{u.email}</div>
+                        </div>
+
+                        <div className="w-28 flex-shrink-0">
+                          <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                            u.role === "admin" 
+                              ? "bg-purple-50 text-purple-700 border border-purple-100" 
+                              : "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                          }`}>
+                            {u.role}
+                          </span>
+                        </div>
+
+                        <div className="w-28 flex-shrink-0">
+                          {u.role === "admin" ? (
+                            <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider italic">Toujours actif</span>
+                          ) : (
+                            <button
+                              onClick={() => handleToggleActive(u.id, u.is_active !== false)}
+                              className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                u.is_active !== false ? "bg-green-600" : "bg-gray-200"
+                              }`}
+                            >
+                              <span
+                                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                  u.is_active !== false ? "translate-x-4" : "translate-x-0"
+                                }`}
+                              />
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="w-32 flex-shrink-0 text-right flex justify-end gap-2">
+                          <button
+                            onClick={() => toggleExpand(u.id)}
+                            className={`px-3 py-1.5 rounded border text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${
+                              isExpanded
+                                ? "bg-gray-100 text-gray-700 border-gray-300"
+                                : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                            }`}
+                          >
+                            <span>Gérer</span>
+                            <svg className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                        </div>
                       </div>
-                    )}
-                  </td>
-                  <td className="p-4 text-right">
-                    {u.email !== "admin@mawarif.com" && (
-                      <button
-                        onClick={() => handleDeleteUser(u.id, u.email)}
-                        disabled={actionLoading}
-                        className="text-xs font-semibold text-red-600 hover:text-red-800 transition-colors disabled:opacity-50"
-                      >
-                        Supprimer
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+
+                      {/* Expanded Accordion Panel */}
+                      {isExpanded && (
+                        <div className="bg-[#FBFBF8] border-t border-b border-gray-150 p-6 space-y-6 animate-fadeIn">
+                          <div className="space-y-4">
+                            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200/60 pb-2">
+                              Droits d&apos;accès aux documents
+                            </h4>
+                            {u.role === "admin" ? (
+                              <p className="text-xs text-gray-400 italic">Les administrateurs disposent d&apos;un accès complet et permanent à l&apos;intégralité des études.</p>
+                            ) : (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {(() => {
+                                  const categoryOrder = [
+                                    "Bienvenue au cœur de la Vision MawaRif",
+                                    "L'architecture de la performance",
+                                    "Trajectoire D'investissement, L'art de l'allocation stratégique",
+                                    "Gouvernance"
+                                  ];
+                                  return Object.entries(
+                                    studies.reduce((acc, s) => {
+                                      const cat = s.category || "Dossier d'Investissement";
+                                      if (!acc[cat]) acc[cat] = [];
+                                      acc[cat].push(s);
+                                      return acc;
+                                    }, {} as Record<string, Study[]>)
+                                  )
+                                    .sort(([catA], [catB]) => {
+                                      const idxA = categoryOrder.indexOf(catA);
+                                      const idxB = categoryOrder.indexOf(catB);
+                                      return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+                                    })
+                                    .map(([category, items]) => (
+                                      <div key={category} className="space-y-2 bg-white p-4 rounded-lg border border-gray-200/50 shadow-sm">
+                                        <div className="text-[10px] font-bold text-[#8B5E3C] uppercase tracking-widest border-b border-gray-100 pb-1.5 mb-2">
+                                          {category}
+                                        </div>
+                                        <div className="flex flex-col gap-2">
+                                          {items
+                                            .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+                                            .map((s) => {
+                                            const isGranted = access[u.id]?.[s.id] || false;
+                                            return (
+                                              <label key={s.id} className="inline-flex items-center gap-2.5 text-xs text-gray-700 cursor-pointer hover:text-gray-900 select-none">
+                                                <input
+                                                  type="checkbox"
+                                                  checked={isGranted}
+                                                  onChange={() => handleToggleAccess(u.id, s.id, isGranted)}
+                                                  className="rounded text-[#1A3C34] border-gray-300 focus:ring-[#1A3C34] h-4 w-4 cursor-pointer"
+                                                />
+                                                <span className="font-light">{s.title}</span>
+                                              </label>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    ));
+                                })()}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Delete Account Area */}
+                          {u.email !== "admin@mawarif.com" && (
+                            <div className="pt-4 border-t border-gray-200/60 flex justify-between items-center">
+                              <div className="text-xs text-gray-400">
+                                Supprimer définitivement ce compte investisseur et ses accès.
+                              </div>
+                              <button
+                                onClick={() => handleDeleteUser(u.id, u.email)}
+                                disabled={actionLoading}
+                                className="py-1.5 px-4 border border-red-200 text-red-600 hover:bg-red-50 font-semibold text-xs uppercase tracking-wider rounded-md transition-all cursor-pointer disabled:opacity-50"
+                              >
+                                Supprimer le compte
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Creation Modal */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-[100] animate-fadeIn p-4">
+          <div className="bg-white rounded-xl shadow-xl border border-gray-200/80 w-full max-w-lg overflow-hidden animate-scaleIn">
+            <div className="p-6 border-b border-gray-200/60 flex justify-between items-center">
+              <div>
+                <h3 className="text-base font-bold text-gray-800 uppercase tracking-wider">Créer un nouvel investisseur</h3>
+                <p className="text-[11px] text-gray-400 mt-0.5">Créez des identifiants confidentiels pour votre partenaire.</p>
+              </div>
+              <button
+                onClick={() => setIsCreateModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1 cursor-pointer"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateUser} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Nom complet</label>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Ex: Reda Ouaradane"
+                  className="w-full text-sm px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-[#1A3C34] focus:border-[#1A3C34]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Adresse email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Ex: reda@mawarif.com"
+                  className="w-full text-sm px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-[#1A3C34] focus:border-[#1A3C34]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Mot de passe provisoire</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full text-sm px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-[#1A3C34] focus:border-[#1A3C34]"
+                  required
+                />
+              </div>
+
+              <div className="pt-4 border-t border-gray-100 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-600 font-semibold text-xs uppercase tracking-wider rounded-md transition-colors cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionLoading}
+                  className="py-2.5 px-5 bg-[#1A3C34] hover:bg-[#1A3C34]/95 text-white font-semibold text-xs uppercase tracking-wider rounded-md transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
+                >
+                  {actionLoading ? "Création en cours..." : "Créer le compte"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

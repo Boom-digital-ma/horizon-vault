@@ -6,6 +6,7 @@ interface StudyHeader {
   title: string;
   category?: string;
   hasAccess?: boolean;
+  order_index?: number;
 }
 
 interface SidebarProps {
@@ -96,7 +97,9 @@ export default function Sidebar({
                   <p className="px-3 text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
                     {category}
                   </p>
-                  {items.map((study) => (
+                  {items
+                    .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+                    .map((study) => (
                     <button
                       key={study.id}
                       onClick={() => onSelectStudy(study.slug)}

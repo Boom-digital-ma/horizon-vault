@@ -109,36 +109,36 @@ export default function AdminPage() {
       <div className="w-full px-8 py-8 flex-1 flex flex-col md:flex-row gap-8">
         
         {/* Navigation Sidebar */}
-        <aside className="w-full md:w-56 flex flex-col gap-1 h-fit bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 px-3">
+        <aside className="w-full md:w-56 flex flex-col gap-1.5 h-fit bg-white p-4 rounded-lg border border-gray-200/60 shadow-sm">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 px-3">
             Menu de contrôle
           </p>
           <button
             onClick={() => setActiveTab("users")}
-            className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+            className={`w-full text-left px-3 py-2.5 rounded-md text-xs font-semibold uppercase tracking-wider transition-all duration-200 ${
               activeTab === "users"
-                ? "bg-blue-50 text-blue-700 font-semibold"
-                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                ? "bg-[#1A3C34]/5 text-[#1A3C34] border-l-4 border-[#1A3C34] pl-2 rounded-l-none font-bold"
+                : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
             }`}
           >
             Utilisateurs & Accès
           </button>
           <button
             onClick={() => setActiveTab("studies")}
-            className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+            className={`w-full text-left px-3 py-2.5 rounded-md text-xs font-semibold uppercase tracking-wider transition-all duration-200 ${
               activeTab === "studies"
-                ? "bg-blue-50 text-blue-700 font-semibold"
-                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                ? "bg-[#1A3C34]/5 text-[#1A3C34] border-l-4 border-[#1A3C34] pl-2 rounded-l-none font-bold"
+                : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
             }`}
           >
             Catalogue des Études
           </button>
           <button
             onClick={() => setActiveTab("analytics")}
-            className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+            className={`w-full text-left px-3 py-2.5 rounded-md text-xs font-semibold uppercase tracking-wider transition-all duration-200 ${
               activeTab === "analytics"
-                ? "bg-blue-50 text-blue-700 font-semibold"
-                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                ? "bg-[#1A3C34]/5 text-[#1A3C34] border-l-4 border-[#1A3C34] pl-2 rounded-l-none font-bold"
+                : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
             }`}
           >
             Activité & Tracking
@@ -148,7 +148,7 @@ export default function AdminPage() {
         {/* Content area */}
         <main className="flex-1">
           {activeTab === "users" && <UserCrud />}
-          {activeTab === "studies" && <StudyCrud />}
+          {activeTab === "studies" && <StudyCrud adminEmail={adminEmail} />}
           {activeTab === "analytics" && <AnalyticsDashboard />}
         </main>
       </div>
