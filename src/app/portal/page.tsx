@@ -145,6 +145,48 @@ export default function PortalPage() {
     fetchStudyContent();
   }, [activeStudySlug, studies]);
 
+  // Global active session time tracking for overall site connection time
+  useEffect(() => {
+    if (!userId) return;
+
+    const localSiteSeconds = { current: 0 };
+
+    const siteTimer = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        localSiteSeconds.current += 1;
+      }
+    }, 1000);
+
+    const flushSiteTime = async () => {
+      const secondsToIncrement = localSiteSeconds.current;
+      if (secondsToIncrement === 0) return;
+
+      localSiteSeconds.current = 0;
+      try {
+        const { error } = await supabase.rpc("increment_site_time", {
+          p_time_spent: secondsToIncrement,
+        });
+        if (error) {
+          localSiteSeconds.current += secondsToIncrement;
+          console.error("Failed to sync global site time:", error);
+        }
+      } catch (err) {
+        localSiteSeconds.current += secondsToIncrement;
+        console.error("Failed to sync global site time:", err);
+      }
+    };
+
+    const siteSyncInterval = setInterval(() => {
+      flushSiteTime();
+    }, 15000);
+
+    return () => {
+      clearInterval(siteTimer);
+      clearInterval(siteSyncInterval);
+      flushSiteTime();
+    };
+  }, [userId]);
+
   useEffect(() => {
     let realtimeChannel: any;
 
